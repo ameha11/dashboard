@@ -1,0 +1,242 @@
+---
+title: "JPF Report"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: row
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(haven)
+library(plyr)#append data set with different number of column  
+library(plotly)
+library(tidyverse)
+library(dplyr)
+library(lubridate)#date & time
+library(highcharter)
+library(DT)#data table
+library(stringr)#string replacement
+library(webr)
+library(extrafont)
+
+#font_import()
+```
+
+```{r }
+import_PWJ<- read_dta("C:/JPF/Data/Household_Questionnair_PWJ_1_STATA_All/Household_Questionnair_PWJ.dta")
+PWJ <- as_factor(import_PWJ)
+
+PWJ$interview_date <- as_date(PWJ$interview_date)
+```
+
+
+HOME
+=====================================
+
+Row
+-----------------------------------------------------------------------
+
+### PWJ Interviews Synced
+```{r}
+num_pwj <- nrow(PWJ)
+valueBox(num_pwj, icon = "fa-bar-chart", color ="#5F9DF7")
+```
+
+
+### PWJ Interviews Expected
+```{r}
+valueBox(80, icon = "fa-bar-chart", color="#5F9DF7")
+```
+
+### LAST UPDATED AT:
+
+```{r}
+updated_time <- Sys.Date()
+
+valueBox(updated_time,icon = "fa-clock", color = "orange")
+
+```
+
+```{r number of interviews}
+Faida_PWJ <- PWJ %>% filter(enumerator=="Faida Stella Justin") %>% nrow()
+Hakim_PWJ <- PWJ %>% filter(enumerator=="Hakim Banga") %>% nrow()
+Otimoi_PWJ <- PWJ %>% filter(enumerator=="Otimoi Tom Oduma") %>% nrow()
+Lilian_PWJ <- PWJ %>% filter(enumerator=="Lilian Ayero John") %>% nrow()
+Alex_PWJ <- PWJ %>% filter(enumerator=="Alex Awaso Asiki") %>% nrow()
+Ajiek_PWJ <- PWJ %>% filter(enumerator=="Ajiek Ajiek Majok") %>% nrow()
+
+```
+
+Column 
+-----------------------------------------------------------------------
+### TOTAL SYNCED DATA BY ENUMERATOR 
+
+```{r}
+PWJ %>% 
+  dplyr::count(enumerator) %>%
+  arrange(-n) %>% 
+  hchart('bar', hcaes(x = 'enumerator', y = 'n'))
+```
+
+### USING FACILITY CONSTRACTED BY PWJ
+
+
+```{r}
+use_Waterpoint<-PWJ %>% select(IDP_camp,Q3_2) %>% 
+  dplyr::filter(Q3_2 == "Yes") %>% 
+  dplyr::group_by(IDP_camp) %>%
+  na.omit() %>% 
+  dplyr::summarise(count_use_waterpoint = n())
+
+use_latrin<-PWJ %>% select(IDP_camp,Q3_32) %>% 
+  dplyr::filter(Q3_32 == "Yes") %>% 
+  dplyr::group_by(IDP_camp) %>%
+  na.omit() %>% 
+  dplyr::summarise(count_use_toilet = n()) 
+
+use_bathing <-PWJ %>% select(IDP_camp,Q3_21) %>% 
+  dplyr::filter(Q3_21 == "Yes") %>% 
+  dplyr::group_by(IDP_camp) %>%
+  na.omit() %>% 
+  dplyr::summarise(count_use_bathing = n())
+
+join_water_latrin <- use_Waterpoint%>% inner_join(use_latrin, by = "IDP_camp")
+
+join_all_fac<- join_water_latrin %>% inner_join(use_bathing, by="IDP_camp")%>% 
+  rename("Water_facility" = "count_use_waterpoint") %>%
+  rename("Toilet_facility" = "count_use_toilet") %>% 
+  rename("Bathing_facility" = "count_use_bathing") 
+```
+
+
+```{r }
+
+ fig <- plot_ly(join_all_fac, x = ~IDP_camp, y = ~Water_facility, type = 'bar', name = 'Water facility', marker = list(color = '#31C6D4')) 
+
+ fig <- fig %>% add_trace(y = ~Toilet_facility, name = 'Toilet facility', marker = list(color = '#D61C4E'))
+ fig <- fig %>% add_trace(y = ~Bathing_facility, name = 'Bathing facility', marker = list(color = '#277BC0'))
+ fig <- fig %>% layout(title = "")
+
+ fig <- fig %>% layout(yaxis = list(title = 'Count'), barmode = 'group')
+ 
+ fig
+```
+
+
+### TOTAL SYNCED DATA BY ENUMERATOR 
+
+```{r}
+#glimpse(PWJ)
+
+sex <- PWJ %>% select(Q2_1, enumerator) %>% 
+  dplyr::group_by(Q2_1) %>%
+  na.omit() %>% 
+  summarise(num_sex = n())
+
+  
+
+fig <- plot_ly(sex, type='pie', labels= ~Q2_1, values= ~num_sex,
+               textinfo='label+percent',
+               insidetextorientation='radial',
+               marker = list(colors = c('#277BC0', "#FA2FB5"))
+               
+               )
+fig
+```
+
+row 
+-----------------------------------------------------------------------
+
+### TOTAL SYNCED DATA BY ENUMERATOR 
+```{r }
+sat <-PWJ %>% select(Q3_6a, Q3_8) %>% 
+  na.omit() %>% 
+  #filter(Q3_8=="Don't know") %>% 
+  group_by(Q3_6a, Q3_8) %>%
+  summarise(Freq = n())
+  
+sat %>%  PieDonut(aes(Q3_6a, Q3_8, count=Freq), title = "", explode = 2, explodeDonut=TRUE)
+
+
+```
+
+
+### USING FACILITY CONSTRACTED BY PWJ
+
+
+```{r}
+use_Waterpoint<-PWJ %>% select(IDP_camp,Q3_2) %>% 
+  dplyr::filter(Q3_2 == "Yes") %>% 
+  dplyr::group_by(IDP_camp) %>%
+  na.omit() %>% 
+  dplyr::summarise(count_use_waterpoint = n())
+
+use_latrin<-PWJ %>% select(IDP_camp,Q3_32) %>% 
+  dplyr::filter(Q3_32 == "Yes") %>% 
+  dplyr::group_by(IDP_camp) %>%
+  na.omit() %>% 
+  dplyr::summarise(count_use_toilet = n()) 
+
+use_bathing <-PWJ %>% select(IDP_camp,Q3_21) %>% 
+  dplyr::filter(Q3_21 == "Yes") %>% 
+  dplyr::group_by(IDP_camp) %>%
+  na.omit() %>% 
+  dplyr::summarise(count_use_bathing = n())
+
+
+
+join_water_latrin <- use_Waterpoint%>% inner_join(use_latrin, by = "IDP_camp")
+
+join_all_fac<- join_water_latrin %>% inner_join(use_bathing, by="IDP_camp")%>% 
+  rename("Water_facility" = "count_use_waterpoint") %>%
+  rename("Toilet_facility" = "count_use_toilet") %>% 
+  rename("Bathing_facility" = "count_use_bathing") 
+
+```
+
+
+
+```{r}
+
+ fig <- plot_ly(join_all_fac, x = ~IDP_camp, y = ~Water_facility, type = 'bar', name = 'Water facility', marker = list(color = '#31C6D4')) 
+
+ fig <- fig %>% add_trace(y = ~Toilet_facility, name = 'Toilet facility', marker = list(color = '#A66CFF'))
+ fig <- fig %>% add_trace(y = ~Bathing_facility, name = 'Bathing facility', marker = list(color = '#D61C4E'))
+ fig <- fig %>% layout(title = " ")
+
+ fig <- fig %>% layout(yaxis = list(title = 'Count'), barmode = 'group')
+ 
+ fig
+```
+
+### TOTAL SYNCED DATA BY ENUMERATOR 
+
+```{r}
+### DAILY DATA SYNCED BY ENUMERATOR
+PWJ %>% select('interview_date', 'enumerator') %>% 
+  arrange(interview_date) %>% 
+  count( interview_date,enumerator) %>% 
+  hchart('spline', hcaes(x = 'interview_date', y = 'n', group = "enumerator"))
+
+```
+
+DATA
+=====================================
+
+Column 
+-----------------------------------------------------------------------
+
+### EXPECTED TABLE.
+
+```{r }
+Export<-PWJ %>% select(-interview__id, -payam, -block_no, -settlement, -Quest_id, -gps__Latitude, -gps__Longitude, -gps__Accuracy, -gps__Altitude, -gps__Timestamp, -sssys_irnd, -has__errors, -interview__status,-assignment__id)
+
+datatable(
+  Export,
+  extensions = 'Buttons', options = list(
+    dom = 'Bfrtip',
+    buttons = c('csv', 'excel')
+  )
+)
+```
